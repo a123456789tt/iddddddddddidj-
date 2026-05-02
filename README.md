@@ -1,24 +1,18 @@
--- ==================== XENO RIVALS | ULTIMATE (DRAWING ESP) ====================
--- Все функции: Aimbot (приоритет, рандомная часть тела, удержание цели, дистанция до 10000),
--- Triggerbot, Rage Bot, Speed, Fly V3, Noclip, InfJump, ESP (Drawing: Box, Name, Health, Level, Skeleton),
--- Teleport, Shotgun, Dagger, Tracers, Device Spoof, Whitelist, Skin Changer, AutoRun, AutoLoad,
--- No Recoil/Spread, No Flash/Smoke, Защита после респавна (2 студии, 90 сек).
--- Меню: Right Shift. Только тёмная тема.
+-- ==================== FAZZETA RIVALS v2.1 (RPG & Fog + Fire & Jump) ====================
 
--- Загрузка библиотек
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
--- Сервисы
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local Camera = workspace.CurrentCamera
+local Camera = Workspace.CurrentCamera
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local MaterialService = game:GetService("MaterialService")
 local Lighting = game:GetService("Lighting")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
@@ -26,14 +20,11 @@ local humanoid = character:WaitForChild("Humanoid")
 
 -- ==================== НАСТРОЙКИ ====================
 local Settings = {
-    -- Speed
     speedEnabled = true,
     currentSpeed = 16,
-    -- Fly
     flyMode = "V3",
     flySpeedV2 = 60,
     isFlying = false,
-    -- Aimbot
     aimbotEnabled = false,
     aimbotDistance = 300,
     aimbotSmoothness = 0.7,
@@ -47,14 +38,13 @@ local Settings = {
     aimbotRandomPart = false,
     aimbotHeadChance = 70,
     aimbotStayOnTarget = true,
-    -- Triggerbot
     triggerbotEnabled = false,
     currentTriggerDelay = 150,
-    -- Misc
     infJumpEnabled = false,
     infJumpPower = 50,
     noclipEnabled = false,
-    -- ESP (Drawing)
+    fovEnabled = false,
+    customFOV = 90,
     espEnabled = false,
     espDistance = 1000,
     espBoxEnabled = true,
@@ -68,32 +58,20 @@ local Settings = {
     espLevelColor = Color3.fromRGB(255, 255, 255),
     espSkeletonEnabled = false,
     espSkeletonColor = Color3.fromRGB(255, 150, 200),
-    -- Device
-    devices = {"PC", "Phone", "Joystick", "VR"},
-    deviceIndex = 1,
-    -- Teleport
     tpEnabled = false,
     tpPosition = "Front",
     tpDistance = 2,
-    -- Shotgun
     shotgunModeEnabled = false,
     shotgunTPDistance = 5,
     shotgunUpdateRate = 0.1,
-    -- Dagger
     daggerModeEnabled = false,
     daggerParryKey = Enum.KeyCode.Q,
     daggerParryDistance = 15,
-    -- Tracers
     tracerEnabled = false,
     tracerLength = 500,
     tracerDuration = 0.5,
     tracerColor = Color3.new(1, 0.5, 0),
-    tracerOrigin = "Head",
-    -- AutoRun
     autoRunEnabled = false,
-    -- AutoLoad
-    autoLoadEnabled = false,
-    -- Rage Bot
     rageBotEnabled = false,
     rageAimbot = false,
     rageTriggerbot = false,
@@ -101,20 +79,79 @@ local Settings = {
     rageShootDelay = 150,
     rageHitPart = "Head",
     rageSwitchOnEmpty = false,
-    -- No Recoil/Spread & Visuals
     noRecoil = false,
     noSpread = false,
     noFlash = false,
     noSmoke = false,
+    rpgBlockEnabled = false,
+    rpgBlockSize = 12,
+    fogEnabled = false,
+    fogDensity = 0.1,
+    fogColor = Color3.fromRGB(200, 200, 200),
+    hudEnabled = true,
+    slideBoostEnabled = false,
+    slideBoostPower = 5,
+    constantTpUp = false,
+    randomTpRadius = 50,
+    skyEnabled = false,
+    skyColor = Color3.fromRGB(135, 206, 235),
 }
 
--- ==================== ЗАЩИТА ПОСЛЕ РЕСПАВНА (2 студии, 90 сек) ====================
+-- ==================== FIRE CONTROL (одна кнопка рандома) ====================
+local fireEmitters = {}
+
+local function isFireParticle(particle)
+    local n = particle.Name:lower()
+    return n:find("fire") or n:find("flame") or n:find("ignite") or n:find("burn")
+end
+
+local function addFireEmitter(emitter)
+    if isFireParticle(emitter) then
+        fireEmitters[emitter] = true
+    end
+end
+
+local function removeFireEmitter(emitter)
+    fireEmitters[emitter] = nil
+end
+
+for _, v in ipairs(Workspace:GetDescendants()) do
+    if v:IsA("ParticleEmitter") then addFireEmitter(v)
+    elseif v:IsA("Fire") then addFireEmitter(v) end
+end
+
+Workspace.DescendantAdded:Connect(function(obj)
+    if obj:IsA("ParticleEmitter") or obj:IsA("Fire") then addFireEmitter(obj) end
+end)
+Workspace.DescendantRemoving:Connect(function(obj)
+    if fireEmitters[obj] then removeFireEmitter(obj) end
+end)
+
+local function randomizeFireColors()
+    for emitter, _ in pairs(fireEmitters) do
+        local c1 = Color3.fromRGB(math.random(255), math.random(255), math.random(255))
+        local c2 = Color3.fromRGB(math.random(255), math.random(255), math.random(255))
+        local c3 = Color3.fromRGB(math.random(255), math.random(255), math.random(255))
+        local gradient = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, c1),
+            ColorSequenceKeypoint.new(0.5, c2),
+            ColorSequenceKeypoint.new(1, c3)
+        })
+        if emitter:IsA("ParticleEmitter") then
+            emitter.Color = gradient
+        elseif emitter:IsA("Fire") then
+            emitter.Color = c2
+            emitter.SecondaryColor = c3
+        end
+    end
+end
+
+-- ==================== ЗАЩИТА ПОСЛЕ РЕСПАВНА ====================
 local protectedPlayers = {}
 local function isPlayerProtected(targetPlayer)
     local untilTime = protectedPlayers[targetPlayer]
     return untilTime and os.time() < untilTime
 end
-
 task.spawn(function()
     while true do
         task.wait(30)
@@ -124,7 +161,6 @@ task.spawn(function()
         end
     end
 end)
-
 local function onPlayerRespawn(targetPlayer)
     targetPlayer.CharacterAdded:Connect(function(newChar)
         task.wait(0.5)
@@ -134,7 +170,7 @@ local function onPlayerRespawn(targetPlayer)
             local dist = (targetRoot.Position - myRoot.Position).Magnitude
             if dist <= 2 then
                 protectedPlayers[targetPlayer] = os.time() + 90
-                print("[Xeno] Защита " .. targetPlayer.Name .. " на 90 сек")
+                print("[FazZzeta] Защита " .. targetPlayer.Name .. " на 90 сек")
             end
         end
     end)
@@ -143,28 +179,29 @@ for _, plr in ipairs(Players:GetPlayers()) do if plr ~= player then onPlayerResp
 Players.PlayerAdded:Connect(onPlayerRespawn)
 
 -- ==================== ВСПОМОГАТЕЛЬНЫЕ ====================
-local function updateStatus(text) print("[Xeno] " .. text) end
+local function updateStatus(text) print("[FazZzeta] " .. text) end
 local function isEnemy(targetPlayer)
     if targetPlayer == player then return false end
-    if _G.XenoWhitelist and _G.XenoWhitelist[targetPlayer.Name] then return false end
+    if _G.FazetaWhitelist and _G.FazetaWhitelist[targetPlayer.Name] then return false end
     if isPlayerProtected(targetPlayer) then return false end
     if not Settings.teamCheck then return true end
-    local myTeam = player.Team
-    local targetTeam = targetPlayer.Team
-    if myTeam and targetTeam then return myTeam ~= targetTeam else return true end
+    if not targetPlayer.Team then return false end
+    if not player.Team then return true end
+    return player.Team ~= targetPlayer.Team
 end
 
 local function canSee(targetPart)
-    local ignore = Settings.aimbotIgnoreWalls or (Settings.rageBotEnabled and Settings.rageWallPen)
-    if ignore then return true end
+    if Settings.aimbotIgnoreWalls or (Settings.rageBotEnabled and Settings.rageWallPen) then return true end
     local origin = Camera.CFrame.Position
+    local direction = (targetPart.Position - origin).Unit * 1000
     local params = RaycastParams.new()
     params.FilterDescendantsInstances = {character, Camera}
     params.FilterType = Enum.RaycastFilterType.Blacklist
-    local result = Workspace:Raycast(origin, (targetPart.Position - origin).Unit * 1000, params)
+    local result = Workspace:Raycast(origin, direction, params)
     if result and result.Instance then
-        local hitChar = result.Instance:FindFirstAncestorOfClass("Model")
-        if hitChar and hitChar:FindFirstChild("Humanoid") then return true end
+        local hit = result.Instance
+        local hitChar = hit:FindFirstAncestorOfClass("Model")
+        if hitChar and hitChar == targetPart.Parent then return true end
         return false
     end
     return true
@@ -190,24 +227,70 @@ local function applyNoRecoilSpread()
 end
 RunService.Heartbeat:Connect(applyNoRecoilSpread)
 
--- No Flash / No Smoke
-local function removeFlashSmoke()
-    if Settings.noFlash then
-        for _, v in ipairs(Workspace:GetDescendants()) do
-            if v.Name:lower():find("flash") or v.Name:lower():find("flashbang") then
-                v:Destroy()
-            end
-        end
+-- No Flash / No Smoke (улучшено)
+local function removeFlashSmoke(obj)
+    if not obj:IsA("BasePart") and not obj:IsA("ParticleEmitter") and not obj:IsA("Smoke") then return end
+    local parentName = obj.Parent and obj.Parent.Name:lower() or ""
+    local objName = obj.Name:lower()
+
+    if Settings.noFlash and (objName:find("flash") or parentName:find("flash")) then
+        obj:Destroy()
+        return
     end
+
     if Settings.noSmoke then
-        for _, v in ipairs(Workspace:GetDescendants()) do
-            if v.Name:lower():find("smoke") then
-                v:Destroy()
-            end
+        if obj:IsA("Smoke") then
+            obj:Destroy()
+        elseif obj:IsA("BasePart") and (objName:find("smoke") or objName:find("grenade") or parentName:find("smoke") or parentName:find("grenade")) then
+            obj:Destroy()
+        elseif obj:IsA("ParticleEmitter") and (objName:find("smoke") or parentName:find("smoke") or objName:find("grenade")) then
+            obj:Destroy()
         end
     end
 end
-RunService.Heartbeat:Connect(removeFlashSmoke)
+Workspace.DescendantAdded:Connect(removeFlashSmoke)
+for _, v in ipairs(Workspace:GetDescendants()) do removeFlashSmoke(v) end
+
+-- Custom FOV
+RunService.RenderStepped:Connect(function()
+    if Settings.fovEnabled and Camera then
+        Camera.FieldOfView = math.clamp(Settings.customFOV, 30, 120)
+    end
+end)
+
+-- Fog Control (атмосфера)
+local function applyFog()
+    if Settings.fogEnabled then
+        local density = math.clamp(Settings.fogDensity, 0, 1)
+        local fogEnd = math.clamp(500 * (1 - density), 10, 500)
+        Lighting.FogStart = 0
+        Lighting.FogEnd = fogEnd
+        Lighting.FogColor = Settings.fogColor
+        local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
+        atmosphere.Parent = Lighting
+        atmosphere.Density = density * 0.8
+        atmosphere.Color = Settings.fogColor
+        atmosphere.Haze = density * 2
+        atmosphere.Glare = 0
+    else
+        Lighting.FogStart = 0
+        Lighting.FogEnd = 100000
+        local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+        if atmosphere then atmosphere:Destroy() end
+    end
+end
+RunService.RenderStepped:Connect(applyFog)
+
+-- Sky (простая замена цвета окружения)
+local function applySky()
+    if Settings.skyEnabled then
+        Lighting.Ambient = Settings.skyColor
+        Lighting.OutdoorAmbient = Settings.skyColor
+    else
+        Lighting.Ambient = Color3.fromRGB(70, 70, 70)
+        Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
+    end
+end
 
 -- ==================== AIMBOT ====================
 local aimTarget = nil
@@ -231,7 +314,6 @@ local function getTargetPart(char)
         return char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
     end
 end
-
 local function findBestTarget()
     if not character or not character:FindFirstChild("HumanoidRootPart") then return nil, nil end
     local myPos = character.HumanoidRootPart.Position
@@ -271,7 +353,6 @@ local function findBestTarget()
         return best.player, best.part
     end
 end
-
 local function aimAt(part)
     if not Camera or not part then return end
     local targetPos = part.Position
@@ -279,11 +360,9 @@ local function aimAt(part)
     local smooth = Settings.aimbotSmoothness * (0.9 + 0.2*math.random())
     Camera.CFrame = Camera.CFrame:Lerp(newCFrame, smooth)
 end
-
 local rmbHeld = false
 UserInputService.InputBegan:Connect(function(inp,gp) if not gp and inp.UserInputType == Enum.UserInputType.MouseButton2 then rmbHeld = true end end)
 UserInputService.InputEnded:Connect(function(inp) if inp.UserInputType == Enum.UserInputType.MouseButton2 then rmbHeld = false end end)
-
 function startAimbot()
     if aimbotConnection then aimbotConnection:Disconnect() end
     if cameraConnection then cameraConnection:Disconnect() end
@@ -447,6 +526,30 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
+-- Slide Boost
+local function startSlideBoost()
+    if not Settings.slideBoostEnabled then return end
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    local hum = character and character:FindFirstChild("Humanoid")
+    if not root or not hum then return end
+    if hum.MoveDirection.Magnitude < 0.1 then return end
+    local speed = Settings.slideBoostPower * 10
+    local direction = hum.MoveDirection.Unit
+    local boostVel = Instance.new("BodyVelocity")
+    boostVel.MaxForce = Vector3.new(1e5,0,1e5)
+    boostVel.Velocity = direction * speed
+    boostVel.Parent = root
+    task.delay(0.5, function()
+        boostVel:Destroy()
+    end)
+end
+UserInputService.InputBegan:Connect(function(inp, gp)
+    if gp then return end
+    if inp.KeyCode == Enum.KeyCode.LeftControl and Settings.slideBoostEnabled then
+        startSlideBoost()
+    end
+end)
+
 local function applyNoclip(state)
     if not character then return end
     for _,v in ipairs(character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = not state end end
@@ -545,40 +648,65 @@ end
 local function startTP() if tpConnection then tpConnection:Disconnect() end; tpConnection = RunService.Heartbeat:Connect(teleportToEnemy) end
 local function stopTP() if tpConnection then tpConnection:Disconnect(); tpConnection=nil end end
 local function toggleTP(s) Settings.tpEnabled = s; if s then startTP() else stopTP() end end
+
+-- Random TP вокруг себя
 local randomTPConnection = nil
 local randomTPActive = false
-local function teleportRandom()
+local function teleportRandomAroundSelf()
     local root = character and character:FindFirstChild("HumanoidRootPart")
-    if root then root.CFrame = root.CFrame + Vector3.new((math.random()-0.5)*2000, (math.random()-0.5)*2000, (math.random()-0.5)*2000) end
+    if root then
+        local angle = math.random() * 2 * math.pi
+        local radius = Settings.randomTpRadius * math.random()
+        local offset = Vector3.new(math.cos(angle)*radius, 0, math.sin(angle)*radius)
+        root.CFrame = root.CFrame + offset
+    end
 end
-local function toggleRandomTP(s) randomTPActive = s; if s then if randomTPConnection then randomTPConnection:Disconnect() end; randomTPConnection = RunService.Heartbeat:Connect(function() if randomTPActive then teleportRandom(); task.wait(0.1) end end) else if randomTPConnection then randomTPConnection:Disconnect(); randomTPConnection=nil end end end
-local function teleportDown() local root = character and character:FindFirstChild("HumanoidRootPart"); if root then root.CFrame = root.CFrame + Vector3.new(0,-1000,0) end end
+local function toggleRandomTP(s)
+    randomTPActive = s
+    if s then
+        if randomTPConnection then randomTPConnection:Disconnect() end
+        randomTPConnection = RunService.Heartbeat:Connect(function()
+            if randomTPActive then teleportRandomAroundSelf(); task.wait(0.1) end
+        end)
+    else
+        if randomTPConnection then randomTPConnection:Disconnect(); randomTPConnection=nil end
+    end
+end
+
+-- TP 1000 вверх
+local function teleportUp()
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    if root then root.CFrame = root.CFrame + Vector3.new(0, 1000, 0) end
+end
+local constantUpConnection = nil
+local function toggleConstantUp(s)
+    Settings.constantTpUp = s
+    if s then
+        if constantUpConnection then constantUpConnection:Disconnect() end
+        constantUpConnection = RunService.Heartbeat:Connect(function()
+            teleportUp()
+            task.wait(0.05)
+        end)
+    else
+        if constantUpConnection then constantUpConnection:Disconnect(); constantUpConnection=nil end
+    end
+end
 
 -- ==================== ESP (DRAWING) ====================
 local drawingSupported = pcall(function() return Drawing.new("Square") end)
-if not drawingSupported then
-    warn("[Xeno] Drawing API не поддерживается. ESP отключен.")
-else
-    print("[Xeno] Drawing API доступен. ESP готов.")
-end
+if not drawingSupported then warn("[FazZzeta] Drawing API не поддерживается. ESP отключен.") else print("[FazZzeta] Drawing API доступен.") end
 
 local espObjects = {}
-
 local function getPlayerLevel(plr)
     local leaderstats = plr:FindFirstChild("leaderstats")
     if leaderstats then
         local level = leaderstats:FindFirstChild("Level") or leaderstats:FindFirstChild("Rank")
-        if level and type(level.Value) == "number" then
-            return level.Value
-        end
+        if level and type(level.Value) == "number" then return level.Value end
     end
     local attr = plr:GetAttribute("Level") or plr:GetAttribute("Rank")
-    if attr and type(attr) == "number" then
-        return attr
-    end
+    if attr and type(attr) == "number" then return attr end
     return nil
 end
-
 local function getLevelColor(level)
     if not level then return Color3.fromRGB(128,128,128) end
     if level <= 50 then return Color3.fromRGB(0,255,0)
@@ -587,11 +715,9 @@ local function getLevelColor(level)
     elseif level <= 350 then return Color3.fromRGB(255,0,0)
     else return Color3.fromRGB(139,69,19) end
 end
-
 local function createESP(plr)
     if espObjects[plr] then return end
     if not drawingSupported then return end
-
     local esp = {}
     if Settings.espBoxEnabled then
         esp.box = Drawing.new("Square")
@@ -640,7 +766,6 @@ local function createESP(plr)
     end
     espObjects[plr] = esp
 end
-
 local function removeESP(plr)
     local esp = espObjects[plr]
     if not esp then return end
@@ -648,57 +773,28 @@ local function removeESP(plr)
     if esp.name then esp.name:Remove() end
     if esp.health then esp.health:Remove() end
     if esp.level then esp.level:Remove() end
-    if esp.skeleton then
-        for _, bone in ipairs(esp.skeleton) do bone.line:Remove() end
-    end
+    if esp.skeleton then for _, bone in ipairs(esp.skeleton) do bone.line:Remove() end end
     espObjects[plr] = nil
 end
-
 local function updateDrawingESP()
-    if not Settings.espEnabled then
-        for plr in pairs(espObjects) do removeESP(plr) end
-        return
-    end
-
+    if not Settings.espEnabled then for plr in pairs(espObjects) do removeESP(plr) end return end
     local myChar = player.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-
     for _, plr in ipairs(Players:GetPlayers()) do
-        if plr == player then
-            removeESP(plr)
-            continue
-        end
-        if not isEnemy(plr) then
-            removeESP(plr)
-            continue
-        end
-
+        if plr == player or not isEnemy(plr) then removeESP(plr); continue end
         local char = plr.Character
         if not char then removeESP(plr); continue end
-
         local root = char:FindFirstChild("HumanoidRootPart")
         local hum = char:FindFirstChild("Humanoid")
-        if not root or not hum or hum.Health <= 0 then
-            removeESP(plr)
-            continue
-        end
-
-        if myRoot then
-            if (root.Position - myRoot.Position).Magnitude > Settings.espDistance then
-                removeESP(plr)
-                continue
-            end
-        end
-
+        if not root or not hum or hum.Health <= 0 then removeESP(plr); continue end
+        if myRoot and (root.Position - myRoot.Position).Magnitude > Settings.espDistance then removeESP(plr); continue end
         createESP(plr)
         local esp = espObjects[plr]
         if not esp then continue end
-
         local rootPos, rootOnScreen = Camera:WorldToViewportPoint(root.Position)
         local head = char:FindFirstChild("Head")
-        local headPos = head and head.Position or root.Position + Vector3.new(0, 2, 0)
+        local headPos = head and head.Position or root.Position + Vector3.new(0,2,0)
         local headScreen, headOnScreen = Camera:WorldToViewportPoint(headPos)
-
         if not rootOnScreen or not headOnScreen then
             if esp.box then esp.box.Visible = false end
             if esp.name then esp.name.Visible = false end
@@ -707,12 +803,10 @@ local function updateDrawingESP()
             if esp.skeleton then for _, bone in ipairs(esp.skeleton) do bone.line.Visible = false end end
             continue
         end
-
-        local boxHeight = math.abs(headScreen.Y - rootPos.Y) * 2
+        local boxHeight = math.abs(headScreen.Y - rootPos.Y) * 1.6
         local boxWidth = boxHeight * 0.6
         local boxX = rootPos.X - boxWidth / 2
         local boxY = rootPos.Y - boxHeight / 2
-
         if esp.box then
             esp.box.Visible = true
             esp.box.Position = Vector2.new(boxX, boxY)
@@ -720,14 +814,12 @@ local function updateDrawingESP()
             esp.box.Color = Settings.espBoxColor
             esp.box.Thickness = Settings.espBoxThickness
         end
-
         if esp.name then
             esp.name.Visible = true
             esp.name.Position = Vector2.new(rootPos.X, boxY - 16)
             esp.name.Text = plr.Name
             esp.name.Color = Settings.espNameColor
         end
-
         if esp.health then
             esp.health.Visible = true
             esp.health.Position = Vector2.new(boxX + boxWidth + 5, boxY)
@@ -735,7 +827,6 @@ local function updateDrawingESP()
             esp.health.Text = math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)
             esp.health.Color = Color3.new(1 - hpPercent, hpPercent, 0)
         end
-
         if esp.level then
             local level = getPlayerLevel(plr)
             if level then
@@ -748,7 +839,6 @@ local function updateDrawingESP()
             esp.level.Visible = true
             esp.level.Position = Vector2.new(rootPos.X, boxY - (esp.name and 32 or 16))
         end
-
         if esp.skeleton then
             for _, bone in ipairs(esp.skeleton) do
                 local partA = char:FindFirstChild(bone.partA)
@@ -761,111 +851,220 @@ local function updateDrawingESP()
                         bone.line.From = Vector2.new(posA.X, posA.Y)
                         bone.line.To = Vector2.new(posB.X, posB.Y)
                         bone.line.Color = Settings.espSkeletonColor
-                    else
-                        bone.line.Visible = false
-                    end
-                else
-                    bone.line.Visible = false
-                end
+                    else bone.line.Visible = false end
+                else bone.line.Visible = false end
             end
         end
     end
-
-    for plr in pairs(espObjects) do
-        if not plr.Parent then removeESP(plr) end
-    end
+    for plr in pairs(espObjects) do if not plr.Parent then removeESP(plr) end end
 end
-
 local function startESP()
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= player then createESP(plr) end
-    end
-    Players.PlayerAdded:Connect(function(plr)
-        if plr ~= player then createESP(plr) end
-    end)
+    for _, plr in ipairs(Players:GetPlayers()) do if plr ~= player then createESP(plr) end end
+    Players.PlayerAdded:Connect(function(plr) if plr ~= player then createESP(plr) end end)
     Players.PlayerRemoving:Connect(removeESP)
 end
-
 local function toggleESP(state)
     Settings.espEnabled = state
-    if state then
-        startESP()
-    else
-        for plr in pairs(espObjects) do removeESP(plr) end
-    end
+    if state then startESP() else for plr in pairs(espObjects) do removeESP(plr) end end
 end
-
-if Settings.espEnabled then
-    startESP()
-end
-
+if Settings.espEnabled then startESP() end
 RunService.RenderStepped:Connect(updateDrawingESP)
 
--- ==================== TRACERS ====================
-if drawingSupported then
-    local function getStart()
-        if Settings.tracerOrigin=="Gun" then
-            local tool = character:FindFirstChildOfClass("Tool")
-            if tool then
-                local handle = tool:FindFirstChild("Handle") or tool:FindFirstChild("Grip")
-                if handle then return handle.Position end
-            end
-            local head = character:FindFirstChild("Head")
-            if head then return head.Position end
-        elseif Settings.tracerOrigin=="Head" then
-            local head = character:FindFirstChild("Head")
-            if head then return head.Position end
-        elseif Settings.tracerOrigin=="Camera" then
-            return Camera.CFrame.Position
-        end
-        local root = character and character:FindFirstChild("HumanoidRootPart")
-        return root and root.Position+Vector3.new(0,1,0) or Vector3.new(0,0,0)
+-- ==================== HUD (сдвинут вниз, добавлены название и версия) ====================
+local hudObjects = {}
+local lastFpsUpdate = tick()
+local fpsCount = 0
+local currentFPS = 60
+
+RunService.RenderStepped:Connect(function()
+    if not Settings.hudEnabled then
+        for _, obj in pairs(hudObjects) do obj.Visible = false end
+        return
     end
-    UserInputService.InputBegan:Connect(function(inp,gp)
-        if gp then return end
-        if inp.UserInputType == Enum.UserInputType.MouseButton1 and Settings.tracerEnabled then
-            local start = getStart()
-            if start and Camera then
-                local line = Drawing.new("Line")
-                line.From = start
-                line.To = start + Camera.CFrame.LookVector * Settings.tracerLength
-                line.Color = Settings.tracerColor
-                line.Thickness = 2
-                line.Transparency = 1
-                line.Visible = true
-                task.delay(Settings.tracerDuration, function() line:Remove() end)
-            end
-        end
+    fpsCount = fpsCount + 1
+    local now = tick()
+    if now - lastFpsUpdate >= 1 then
+        currentFPS = math.floor(fpsCount / (now - lastFpsUpdate))
+        fpsCount = 0
+        lastFpsUpdate = now
+    end
+
+    local ping = math.floor(player:GetNetworkPing() * 1000)
+    local gameName = "Unknown"
+    pcall(function()
+        gameName = MarketplaceService:GetProductInfo(game.PlaceId).Name
+    end)
+
+    -- Цвет пинга
+    local pingColor
+    if ping <= 50 then pingColor = Color3.fromRGB(0, 255, 0)
+    elseif ping <= 100 then pingColor = Color3.fromRGB(255, 255, 0)
+    elseif ping <= 200 then pingColor = Color3.fromRGB(255, 165, 0)
+    elseif ping <= 400 then pingColor = Color3.fromRGB(255, 0, 0)
+    else pingColor = Color3.fromRGB(139, 69, 19)
+    end
+
+    local screenHeight = Camera.ViewportSize.Y
+
+    -- Создаём объекты один раз
+    if not hudObjects.nick then
+        hudObjects.nick = Drawing.new("Text")
+        hudObjects.nick.Size = 18; hudObjects.nick.Center = false; hudObjects.nick.Outline = true
+        hudObjects.nick.Color = Color3.fromRGB(255,255,255)
+    end
+    hudObjects.nick.Visible = true
+    hudObjects.nick.Position = Vector2.new(10, 50)
+    hudObjects.nick.Text = "Player: " .. player.Name
+
+    if not hudObjects.game then
+        hudObjects.game = Drawing.new("Text")
+        hudObjects.game.Size = 18; hudObjects.game.Center = false; hudObjects.game.Outline = true
+        hudObjects.game.Color = Color3.fromRGB(255,255,255)
+    end
+    hudObjects.game.Visible = true
+    hudObjects.game.Position = Vector2.new(10, 75)
+    hudObjects.game.Text = "Game: " .. gameName
+
+    if not hudObjects.ping then
+        hudObjects.ping = Drawing.new("Text")
+        hudObjects.ping.Size = 18; hudObjects.ping.Center = false; hudObjects.ping.Outline = true
+    end
+    hudObjects.ping.Visible = true
+    hudObjects.ping.Position = Vector2.new(10, 100)
+    hudObjects.ping.Text = "Ping: " .. ping .. " ms"
+    hudObjects.ping.Color = pingColor
+
+    if not hudObjects.fps then
+        hudObjects.fps = Drawing.new("Text")
+        hudObjects.fps.Size = 18; hudObjects.fps.Center = false; hudObjects.fps.Outline = true
+        hudObjects.fps.Color = Color3.fromRGB(255,255,0)
+    end
+    hudObjects.fps.Visible = true
+    hudObjects.fps.Position = Vector2.new(10, 125)
+    hudObjects.fps.Text = "FPS: " .. currentFPS
+
+    -- Название и версия в самом низу
+    if not hudObjects.title then
+        hudObjects.title = Drawing.new("Text")
+        hudObjects.title.Size = 20; hudObjects.title.Center = false; hudObjects.title.Outline = true
+        hudObjects.title.Color = Color3.fromRGB(180, 0, 255) -- фиолетовый
+    end
+    hudObjects.title.Visible = true
+    hudObjects.title.Position = Vector2.new(10, screenHeight - 45)
+    hudObjects.title.Text = "FazZzeta Rivals"
+
+    if not hudObjects.version then
+        hudObjects.version = Drawing.new("Text")
+        hudObjects.version.Size = 18; hudObjects.version.Center = false; hudObjects.version.Outline = true
+        hudObjects.version.Color = Color3.fromRGB(200, 255, 0) -- жёлто-зелёный
+    end
+    hudObjects.version.Visible = true
+    hudObjects.version.Position = Vector2.new(10, screenHeight - 22)
+    hudObjects.version.Text = "v2.1"
+end)
+
+-- ==================== TRACERS (PART‑BASED) ====================
+local TracerFolder = Instance.new("Folder")
+TracerFolder.Name = "FazZzetaTracers"
+TracerFolder.Parent = Workspace
+
+local function createTracerRay()
+    if not Settings.tracerEnabled then return end
+    if not Camera then return end
+    local startPos = Camera.CFrame.Position
+    local direction = Camera.CFrame.LookVector
+    local length = Settings.tracerLength
+    local rayPart = Instance.new("Part")
+    rayPart.Name = "TracerRay"
+    rayPart.Anchored = true
+    rayPart.CanCollide = false
+    rayPart.CanTouch = false
+    rayPart.Material = Enum.Material.Neon
+    rayPart.Color = Settings.tracerColor
+    rayPart.Transparency = 0.3
+    rayPart.Size = Vector3.new(0.1, 0.1, length)
+    rayPart.CFrame = CFrame.new(startPos + direction * length/2, startPos + direction * length)
+    rayPart.Parent = TracerFolder
+    task.delay(Settings.tracerDuration, function()
+        if rayPart then rayPart:Destroy() end
     end)
 end
 
--- ==================== DEVICE SPOOF ====================
-local function setDevice(dev)
-    local success = false
-    local playerGui = player:FindFirstChild("PlayerGui")
-    if playerGui then
-        for _,obj in ipairs(playerGui:GetDescendants()) do
-            if obj:IsA("StringValue") and obj.Name:lower():find("device") then obj.Value=dev; success=true; break end
-        end
+UserInputService.InputBegan:Connect(function(inp, gp)
+    if gp then return end
+    if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+        createTracerRay()
     end
-    if not success then
-        local backpack = player:FindFirstChild("Backpack")
-        if backpack then
-            for _,obj in ipairs(backpack:GetDescendants()) do
-                if obj:IsA("StringValue") and obj.Name:lower():find("device") then obj.Value=dev; success=true; break end
-            end
-        end
+end)
+
+-- ==================== RPG DODGE BLOCK ====================
+local RPG_Block = { Enabled = Settings.rpgBlockEnabled, ZoneSize = Settings.rpgBlockSize }
+local activeRPGZones = {}
+local function blockHealing(char)
+    local hum = char:FindFirstChild("Humanoid")
+    if hum then
+        hum:SetAttribute("RPG_Block_Heal", true)
+        local oldHealth = hum.Health
+        local conn = hum.HealthChanged:Connect(function(newHealth)
+            if newHealth > oldHealth and hum:GetAttribute("RPG_Block_Heal") then hum.Health = oldHealth end
+            oldHealth = hum.Health
+        end)
+        return conn
     end
-    if not success and playerGui then
-        local new = Instance.new("StringValue")
-        new.Name = "Device"
-        new.Value = dev
-        new.Parent = playerGui
-        success = true
-    end
-    if not success then player:SetAttribute("Device", dev) end
 end
-local function setDeviceIndex(idx) if idx<1 then idx=#Settings.devices end; if idx>#Settings.devices then idx=1 end; if setDevice(Settings.devices[idx]) then Settings.deviceIndex=idx end end
+local function onRPGZoneTouched(projectile, zone, otherPart)
+    local char = otherPart.Parent
+    if not char or not char:IsA("Model") then return end
+    local player = Players:GetPlayerFromCharacter(char)
+    if not player then return end
+    local hum = char:FindFirstChild("Humanoid")
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not root then return end
+    local oldWalkSpeed, oldJumpPower = hum.WalkSpeed, hum.JumpPower
+    hum.WalkSpeed, hum.JumpPower = 0, 0
+    local healConn = blockHealing(char)
+    local data = { oldWalkSpeed = oldWalkSpeed, oldJumpPower = oldJumpPower, healConn = healConn }
+    local touchEndedConn = zone.TouchEnded:Connect(function(part)
+        if part.Parent == char then
+            hum.WalkSpeed, hum.JumpPower = data.oldWalkSpeed, data.oldJumpPower
+            hum:SetAttribute("RPG_Block_Heal", false)
+            if data.healConn then data.healConn:Disconnect() end
+            touchEndedConn:Disconnect()
+        end
+    end)
+    local projectileRemovedConn = projectile.AncestryChanged:Connect(function()
+        if not projectile:IsDescendantOf(Workspace) then
+            hum.WalkSpeed, hum.JumpPower = data.oldWalkSpeed, data.oldJumpPower
+            hum:SetAttribute("RPG_Block_Heal", false)
+            if data.healConn then data.healConn:Disconnect() end
+            projectileRemovedConn:Disconnect()
+            if zone then zone:Destroy() end
+        end
+    end)
+end
+local function onNewProjectile(obj)
+    if not RPG_Block.Enabled then return end
+    if not obj:IsA("BasePart") then return end
+    local name = obj.Name:lower()
+    if name:find("rocket") or name:find("projectile") or name:find("rpg") then
+        local zone = Instance.new("Part")
+        zone.Shape = Enum.PartType.Ball
+        zone.Size = Vector3.new(RPG_Block.ZoneSize, RPG_Block.ZoneSize, RPG_Block.ZoneSize)
+        zone.CanCollide, zone.Transparency, zone.Anchored, zone.CanTouch = true, 1, false, true
+        zone.Parent = Workspace
+        local weld = Instance.new("WeldConstraint")
+        weld.Part0, weld.Part1, weld.Parent = zone, obj, zone
+        zone.Touched:Connect(function(part) onRPGZoneTouched(obj, zone, part) end)
+        activeRPGZones[obj] = zone
+        obj.AncestryChanged:Connect(function()
+            if not obj:IsDescendantOf(Workspace) then
+                if activeRPGZones[obj] then activeRPGZones[obj]:Destroy(); activeRPGZones[obj] = nil end
+            end
+        end)
+    end
+end
+Workspace.DescendantAdded:Connect(onNewProjectile)
+for _, v in ipairs(Workspace:GetDescendants()) do onNewProjectile(v) end
 
 -- ==================== SKIN CHANGER ====================
 local weaponModels = player.PlayerScripts.Assets.ViewModels.Weapons:GetChildren()
@@ -904,23 +1103,22 @@ local function applyWeaponSkin(wn, col, trans, mat, wrapTex, wrapMat, ref, useCo
 end
 
 -- ==================== GUI FLUENT ====================
-Fluent:SetTheme("Dark")
 local Window = Fluent:CreateWindow({
-    Title = "Xeno Rivals",
-    SubTitle = "Ultimate (Drawing ESP)",
+    Title = "FazZzeta Rivals",
+    SubTitle = "v2.1",
     TabWidth = 120,
-    Size = UDim2.fromOffset(520, 450),
+    Size = UDim2.fromOffset(520, 560),
     Acrylic = false,
-    Theme = "Dark",
     MinimizeKey = Enum.KeyCode.RightShift
 })
 local Tabs = {
     Aimbot = Window:AddTab({ Title = "Aimbot", Icon = "crosshair" }),
     Visuals = Window:AddTab({ Title = "Visuals", Icon = "eye" }),
+    World = Window:AddTab({ Title = "World", Icon = "globe" }),
     Player = Window:AddTab({ Title = "Player", Icon = "user" }),
-    Teleport = Window:AddTab({ Title = "Teleport", Icon = "location-dot" }),
+    Teleport = Window:AddTab({ Title = "Teleport", Icon = "map" }),
     Misc = Window:AddTab({ Title = "Misc", Icon = "sliders" }),
-    Settings = Window:AddTab({ Title = "Settings", Icon = "gear" })
+    Settings = Window:AddTab({ Title = "Settings", Icon = "cog" })
 }
 
 -- Aimbot Tab
@@ -940,7 +1138,7 @@ aimSec:AddSlider("headChanceSlider", {Title="Head Chance (%)", Min=0, Max=100, D
 aimSec:AddToggle("stayOnTargetToggle", {Title="Stay on target after kill", Default=Settings.aimbotStayOnTarget, Callback=function(v) Settings.aimbotStayOnTarget=v end})
 aimSec:AddButton({Title="Add to Whitelist", Callback=function()
     local target = getTargetFromCam()
-    if target then _G.XenoWhitelist = _G.XenoWhitelist or {}; _G.XenoWhitelist[target.Name]=true; updateStatus("Whitelist + "..target.Name) else updateStatus("No target") end
+    if target then _G.FazetaWhitelist = _G.FazetaWhitelist or {}; _G.FazetaWhitelist[target.Name]=true; updateStatus("Whitelist + "..target.Name) else updateStatus("No target") end
 end})
 
 local trigSec = Tabs.Aimbot:AddSection("Triggerbot")
@@ -962,38 +1160,50 @@ specSec:AddSlider("shotgunTPSlider", {Title="Shotgun TP Dist", Min=1, Max=10, De
 specSec:AddToggle("daggerToggle", {Title="Dagger Mode", Default=Settings.daggerModeEnabled, Callback=function(v) Settings.daggerModeEnabled=v end})
 specSec:AddSlider("daggerDistSlider", {Title="Parry Distance", Min=5, Max=30, Default=Settings.daggerParryDistance, Rounding=1, Callback=function(v) Settings.daggerParryDistance=v end})
 
--- Visuals Tab (Drawing ESP)
+-- Visuals Tab
 local espSec = Tabs.Visuals:AddSection("ESP (Drawing)")
 espSec:AddToggle("espToggle", {Title="Enable ESP", Default=Settings.espEnabled, Callback=toggleESP})
 espSec:AddSlider("espDistSlider", {Title="Max Distance", Min=100, Max=5000, Default=Settings.espDistance, Rounding=0, Callback=function(v) Settings.espDistance=v end})
-
 espSec:AddToggle("espBoxToggle", {Title="Show Box", Default=Settings.espBoxEnabled, Callback=function(v) Settings.espBoxEnabled=v end})
 espSec:AddColorpicker("espBoxColor", {Title="Box Color", Default=Settings.espBoxColor, Callback=function(v) Settings.espBoxColor=v end})
 espSec:AddSlider("espBoxThickness", {Title="Box Thickness", Min=1, Max=5, Default=Settings.espBoxThickness, Rounding=0, Callback=function(v) Settings.espBoxThickness=v end})
-
 espSec:AddToggle("espNameToggle", {Title="Show Name", Default=Settings.espNameEnabled, Callback=function(v) Settings.espNameEnabled=v end})
 espSec:AddColorpicker("espNameColor", {Title="Name Color", Default=Settings.espNameColor, Callback=function(v) Settings.espNameColor=v end})
-
 espSec:AddToggle("espHealthToggle", {Title="Show Health", Default=Settings.espHealthEnabled, Callback=function(v) Settings.espHealthEnabled=v end})
-
 espSec:AddToggle("espLevelToggle", {Title="Show Level", Default=Settings.espLevelEnabled, Callback=function(v) Settings.espLevelEnabled=v end})
 espSec:AddToggle("espLevelColorByRank", {Title="Level Color by Rank", Default=Settings.espLevelColorByRank, Callback=function(v) Settings.espLevelColorByRank=v end})
 espSec:AddColorpicker("espLevelColor", {Title="Level Color (static)", Default=Settings.espLevelColor, Callback=function(v) Settings.espLevelColor=v end})
-
 espSec:AddToggle("espSkeletonToggle", {Title="Show Skeleton", Default=Settings.espSkeletonEnabled, Callback=function(v) Settings.espSkeletonEnabled=v end})
 espSec:AddColorpicker("espSkeletonColor", {Title="Skeleton Color", Default=Settings.espSkeletonColor, Callback=function(v) Settings.espSkeletonColor=v end})
 
-local tracerSec = Tabs.Visuals:AddSection("Tracers (Drawing)")
-tracerSec:AddToggle("tracerToggle", {Title="Tracers", Default=Settings.tracerEnabled, Callback=function(v) Settings.tracerEnabled=v end})
-tracerSec:AddDropdown("tracerOriginDropdown", {Title="Origin", Values={"Gun","Head","Camera"}, Default=Settings.tracerOrigin=="Gun" and 1 or Settings.tracerOrigin=="Head" and 2 or 3, Callback=function(v) Settings.tracerOrigin=v end})
-tracerSec:AddSlider("tracerLengthSlider", {Title="Length", Min=100, Max=1000, Default=Settings.tracerLength, Rounding=0, Callback=function(v) Settings.tracerLength=v end})
-tracerSec:AddColorpicker("tracerColorPicker", {Title="Color", Default=Settings.tracerColor, Callback=function(v) Settings.tracerColor=v end})
+local hudSec = Tabs.Visuals:AddSection("HUD")
+hudSec:AddToggle("hudToggle", {Title="Show HUD", Default=Settings.hudEnabled, Callback=function(v) Settings.hudEnabled=v end})
 
 local effectsSec = Tabs.Visuals:AddSection("Effects")
 effectsSec:AddToggle("noFlashToggle", {Title="No Flash", Default=Settings.noFlash, Callback=function(v) Settings.noFlash=v end})
 effectsSec:AddToggle("noSmokeToggle", {Title="No Smoke", Default=Settings.noSmoke, Callback=function(v) Settings.noSmoke=v end})
 effectsSec:AddToggle("noRecoilToggle", {Title="No Recoil", Default=Settings.noRecoil, Callback=function(v) Settings.noRecoil=v end})
 effectsSec:AddToggle("noSpreadToggle", {Title="No Spread", Default=Settings.noSpread, Callback=function(v) Settings.noSpread=v end})
+
+local fireSec = Tabs.Visuals:AddSection("Fire Control")
+fireSec:AddButton({Title="Randomize Fire Colors", Callback=randomizeFireColors})
+
+-- World Tab
+local fogSec = Tabs.World:AddSection("Fog Control")
+fogSec:AddToggle("fogToggle", {Title="Enable Fog", Default=Settings.fogEnabled, Callback=function(v) Settings.fogEnabled=v; applyFog() end})
+fogSec:AddSlider("fogDensitySlider", {Title="Fog Density", Min=0, Max=1, Default=Settings.fogDensity, Rounding=2, Callback=function(v) Settings.fogDensity=v; applyFog() end})
+fogSec:AddColorpicker("fogColorPicker", {Title="Fog Color", Default=Settings.fogColor, Callback=function(v) Settings.fogColor=v; applyFog() end})
+
+local skySec = Tabs.World:AddSection("Sky (Custom)")
+skySec:AddToggle("skyToggle", {Title="Custom Sky Color", Default=Settings.skyEnabled, Callback=function(v) Settings.skyEnabled=v; applySky() end})
+skySec:AddColorpicker("skyColorPick", {Title="Sky Color", Default=Settings.skyColor, Callback=function(v) Settings.skyColor=v; if Settings.skyEnabled then applySky() end end})
+skySec:AddButton({Title="Note: External images not supported", Callback=function() end})
+
+local tracerSec = Tabs.World:AddSection("Tracers")
+tracerSec:AddToggle("tracerToggle", {Title="Enable Tracers", Default=Settings.tracerEnabled, Callback=function(v) Settings.tracerEnabled=v end})
+tracerSec:AddSlider("tracerLengthSlider", {Title="Length", Min=100, Max=1000, Default=Settings.tracerLength, Rounding=0, Callback=function(v) Settings.tracerLength=v end})
+tracerSec:AddSlider("tracerDurationSlider", {Title="Duration (sec)", Min=0.1, Max=10, Default=Settings.tracerDuration, Precision=2, Rounding=2, Callback=function(v) Settings.tracerDuration=v end})
+tracerSec:AddColorpicker("tracerColorPicker", {Title="Color", Default=Settings.tracerColor, Callback=function(v) Settings.tracerColor=v end})
 
 -- Player Tab
 local moveSec = Tabs.Player:AddSection("Movement")
@@ -1005,22 +1215,34 @@ moveSec:AddSlider("flySpeedSlider", {Title="Fly Speed V2/V3", Min=1, Max=1000, D
 moveSec:AddToggle("noclipToggle", {Title="Noclip", Default=Settings.noclipEnabled, Callback=toggleNoclip})
 moveSec:AddToggle("infJumpToggle", {Title="Infinite Jump", Default=Settings.infJumpEnabled, Callback=toggleInfJump})
 
+local slideSec = Tabs.Player:AddSection("Slide Boost")
+slideSec:AddToggle("slideToggle", {Title="Slide Boost", Default=Settings.slideBoostEnabled, Callback=function(v) Settings.slideBoostEnabled=v end})
+slideSec:AddSlider("slidePower", {Title="Boost Power (1-10)", Min=1, Max=10, Default=Settings.slideBoostPower, Rounding=0, Callback=function(v) Settings.slideBoostPower=v end})
+
+local jumpSec = Tabs.Player:AddSection("Jump Settings")
+jumpSec:AddSlider("infJumpPowerSlider", {Title="Jump Power", Min=10, Max=200, Default=Settings.infJumpPower, Rounding=0, Callback=function(v) Settings.infJumpPower=v end})
+
+local cameraSec = Tabs.Player:AddSection("Camera")
+cameraSec:AddToggle("fovToggle", {Title="Custom FOV", Default=Settings.fovEnabled, Callback=function(v) Settings.fovEnabled=v; if not v and Camera then Camera.FieldOfView=70 end end})
+cameraSec:AddSlider("fovSlider", {Title="FOV Value (max 120)", Min=30, Max=120, Default=Settings.customFOV, Rounding=0, Callback=function(v) Settings.customFOV=math.clamp(v,30,120); if Settings.fovEnabled and Camera then Camera.FieldOfView=Settings.customFOV end end})
+
 -- Teleport Tab
 local tpSec = Tabs.Teleport:AddSection("Auto Teleport")
 tpSec:AddToggle("tpToggle", {Title="Auto TP", Default=Settings.tpEnabled, Callback=toggleTP})
 tpSec:AddSlider("tpDistanceSlider", {Title="Distance", Min=1, Max=10, Default=Settings.tpDistance, Rounding=1, Callback=function(v) Settings.tpDistance=v end})
 tpSec:AddDropdown("tpPositionDropdown", {Title="Position", Values={"Front","Back","Up","Down"}, Default=1, Callback=function(v) Settings.tpPosition=v end})
-local randSec = Tabs.Teleport:AddSection("Random Teleport")
-randSec:AddToggle("randomTPToggle", {Title="Random TP", Default=randomTPActive, Callback=toggleRandomTP})
-local extraSec = Tabs.Teleport:AddSection("Extra")
-extraSec:AddButton({Title="TP 1000 Down", Callback=teleportDown})
+
+local upSec = Tabs.Teleport:AddSection("Vertical")
+upSec:AddButton({Title="TP 1000 Up", Callback=teleportUp})
+upSec:AddToggle("constantUpToggle", {Title="Constant TP Up", Default=Settings.constantTpUp, Callback=toggleConstantUp})
+
+local randSec = Tabs.Teleport:AddSection("Random TP")
+randSec:AddToggle("randomTPToggle", {Title="Random TP (around self)", Default=randomTPActive, Callback=toggleRandomTP})
+randSec:AddSlider("randomRadius", {Title="Max Radius", Min=10, Max=200, Default=Settings.randomTpRadius, Rounding=0, Callback=function(v) Settings.randomTpRadius=v end})
 
 -- Misc Tab
-local devSec = Tabs.Misc:AddSection("Device & AutoRun")
-devSec:AddDropdown("deviceDropdown", {Title="Device Spoof", Values=Settings.devices, Default=Settings.deviceIndex, Callback=function(v)
-    for i,name in ipairs(Settings.devices) do if name==v then setDeviceIndex(i) break end end
-end})
-devSec:AddToggle("autoRunToggle", {Title="AutoRun", Description="Enable all main features", Default=Settings.autoRunEnabled, Callback=function(state)
+local autorunSec = Tabs.Misc:AddSection("AutoRun")
+autorunSec:AddToggle("autoRunToggle", {Title="AutoRun", Description="Enable all main features", Default=Settings.autoRunEnabled, Callback=function(state)
     Settings.autoRunEnabled = state
     if state then
         if not Settings.aimbotEnabled then toggleAimbot(true) end
@@ -1043,13 +1265,18 @@ devSec:AddToggle("autoRunToggle", {Title="AutoRun", Description="Enable all main
     end
 end})
 
+local rpgSec = Tabs.Misc:AddSection("RPG Protection")
+rpgSec:AddToggle("rpgBlockToggle", {Title="Block RPG Zone", Default=Settings.rpgBlockEnabled, Callback=function(v) Settings.rpgBlockEnabled=v; RPG_Block.Enabled=v end})
+rpgSec:AddSlider("rpgZoneSizeSlider", {Title="Zone Size", Min=5, Max=25, Default=Settings.rpgBlockSize, Rounding=1, Callback=function(v) Settings.rpgBlockSize=v; RPG_Block.ZoneSize=v end})
+
+-- Skin Changer
 local skinSec = Tabs.Misc:AddSection("Skin Changer")
 local weaponDropdown = skinSec:AddDropdown("weaponDropdown", {Title="Weapon", Values=weaponNames, Default=1})
 local wrapDropdown = skinSec:AddDropdown("wrapDropdown", {Title="Wrap Texture", Values=filteredWraps, Default=#filteredWraps>0 and 1 or nil})
 local materialDropdown = skinSec:AddDropdown("materialDropdown", {Title="Material", Values=materialList, Default=1})
 local wrapMaterialDropdown = skinSec:AddDropdown("wrapMaterialDropdown", {Title="Wrap Material", Values=wrapVariantList, Default=#wrapVariantList>0 and 1 or nil})
 local colorPicker = skinSec:AddColorpicker("skinColorPicker", {Title="Color", Transparency=0, Default=Color3.fromRGB(255,255,255)})
-local reflectanceSlider = skinSec:AddSlider("reflectanceSlider", {Title="Reflectance", Min=0, Max=1, Default=0, Rounding=2, Callback=function(v) end})
+local reflectanceSlider = skinSec:AddSlider("reflectanceSlider", {Title="Reflectance", Min=0, Max=1, Default=0, Rounding=2})
 local applyAllToggle = skinSec:AddToggle("applyAllToggle", {Title="Apply to all weapons", Default=false})
 local useColorToggle = skinSec:AddToggle("useColorToggle", {Title="Apply Color", Default=false})
 local useMaterialToggle = skinSec:AddToggle("useMaterialToggle", {Title="Apply Material", Default=false})
@@ -1062,7 +1289,6 @@ end
 skinSec:AddButton({Title="Apply Skin", Callback=applySkin})
 skinSec:AddButton({Title="Randomize", Callback=function()
     colorPicker:SetValue(Color3.fromRGB(math.random(0,255), math.random(0,255), math.random(0,255)))
-    colorPicker.Transparency = math.random()
     reflectanceSlider:SetValue(math.random())
     materialDropdown:SetValue(materialList[math.random(#materialList)])
     if #filteredWraps>0 then wrapDropdown:SetValue(filteredWraps[math.random(#filteredWraps)]) end
@@ -1089,37 +1315,56 @@ end})
 
 -- Settings Tab
 local setSec = Tabs.Settings:AddSection("General")
-setSec:AddToggle("autoLoadToggle", {Title="AutoLoad", Description="Restore functions after respawn", Default=Settings.autoLoadEnabled, Callback=function(state)
-    Settings.autoLoadEnabled = state
-    if state then
-        updateStatus("AutoLoad включён")
-    else
-        updateStatus("AutoLoad выключен")
+setSec:AddButton({Title="Reset All Settings", Callback=function()
+    for k,v in pairs(Settings) do
+        if type(v) == "boolean" then Settings[k] = false
+        elseif type(v) == "number" then Settings[k] = 0
+        elseif type(v) == "string" then Settings[k] = ""
+        end
     end
+    updateStatus("Настройки сброшены")
 end})
 
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
-SaveManager:SetFolder("XenoRivalsUltimate")
-InterfaceManager:SetFolder("XenoRivalsUltimate")
+SaveManager:SetFolder("FazZzetaRivals")
+InterfaceManager:SetFolder("FazZzetaRivals")
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
 Window:SelectTab(1)
 
--- ==================== АВТОВОССТАНОВЛЕНИЕ ====================
+local windowVisible = true
+UserInputService.InputBegan:Connect(function(inp, gp)
+    if gp then return end
+    if inp.KeyCode == Enum.KeyCode.RightShift then
+        windowVisible = not windowVisible
+        Window:SetVisible(windowVisible)
+    end
+end)
+
+-- ==================== ОБРАБОТЧИК РЕСПАВНА ====================
 player.CharacterAdded:Connect(function(newChar)
+    setFlightState(false)
+    if bodyVelocity then
+        bodyVelocity:Destroy()
+        bodyVelocity = nil
+    end
+    removeSpeed()
+    speedController = nil
+
     character = newChar
     humanoid = newChar:WaitForChild("Humanoid")
     task.wait(0.5)
-    applySpeedState()
+
+    if Settings.speedEnabled then applySpeedState() end
     if Settings.noclipEnabled then applyNoclip(true) end
     if Settings.isFlying then setFlightState(true) end
     if Settings.aimbotEnabled then startAimbot() end
     if Settings.triggerbotEnabled then startTriggerbot() end
     if Settings.tpEnabled then startTP() end
     if randomTPActive then toggleRandomTP(true) end
-    -- ESP автоматически подхватит нового персонажа через цикл RenderStepped
+    if Settings.constantTpUp then toggleConstantUp(true) end
 end)
 
 UserInputService.InputBegan:Connect(function(inp,gp)
@@ -1130,6 +1375,7 @@ UserInputService.InputBegan:Connect(function(inp,gp)
         if triggerbotConnection then triggerbotConnection:Disconnect() end
         if tpConnection then tpConnection:Disconnect() end
         if randomTPConnection then randomTPConnection:Disconnect() end
+        if constantUpConnection then constantUpConnection:Disconnect() end
         removeSpeed()
         if bodyVelocity then bodyVelocity:Destroy() end
         updateStatus("Экстренное отключение")
@@ -1149,4 +1395,4 @@ if Settings.autoRunEnabled then
     updateStatus("AutoRun activated")
 end
 
-updateStatus("Xeno Rivals loaded. Press Right Shift to open menu.")
+updateStatus("FazZzeta Rivals v2.1 loaded. иди нахуй чмо и скажи спасибо что я не обленился")
